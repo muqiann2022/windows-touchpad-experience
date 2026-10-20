@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "muqiann.window-glide",
+  "name": "Windows Touchpad Experience",
+  "version": "0.1.0",
+  "author": "muqiann",
+  "license": "MIT",
+  "homepage": "https://github.com/muqiann2022/windows-touchpad-experience",
+  "description": "Windows-style touchpad gestures for Omarchy and Hyprland on Linux Wayland: three-finger window switching with thumbnail previews, fullscreen, restore, and scratchpad.",
+  "category": "productivity",
+  "tags": ["hyprland", "omarchy", "wayland", "quickshell", "windows-like", "window-switcher", "overview", "touchpad", "gestures"],
+  "kinds": ["service", "overlay"],
+  "keepLoaded": true,
+  "entryPoints": {
+    "service": "shell/Service.qml",
+    "overlay": "shell/Overlay.qml"
+  }
+}
