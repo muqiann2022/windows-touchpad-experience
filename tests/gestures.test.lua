@@ -1,14 +1,18 @@
-local gestures, dispatched, active = {}, {}, nil
+local gestures, fourFinger, dispatched, active, special = {}, {}, {}, nil, nil
 local function dispatcher(kind)
   return function(args) return { kind = kind, args = args } end
 end
 local env = setmetatable({
   _G = { __window_glide_registered = true },
   hl = {
-    gesture = function(spec) gestures[spec.direction] = spec.action end,
+    gesture = function(spec)
+      local registry = spec.fingers == 4 and fourFinger or gestures
+      registry[spec.direction] = spec.action
+    end,
+    get_active_special_workspace = function() return special end,
     get_active_window = function() return active end,
     dispatch = function(action) table.insert(dispatched, action) end,
-    dsp = { event = dispatcher("event"), window = { fullscreen = dispatcher("fullscreen"), move = dispatcher("move") } },
+    dsp = { workspace = { toggle_special = dispatcher("special") }, event = dispatcher("event"), window = { fullscreen = dispatcher("fullscreen"), move = dispatcher("move") } },
   },
 }, { __index = _G })
 assert(loadfile("app/gesture.lua", "t", env))()
@@ -41,4 +45,22 @@ gestures.horizontal["end"]({ cancelled = false })
 assert(dispatched[10].args == "window-glide,h:finish:0.000:0.000:0", "a new gesture resets travel")
 assert(loadfile("app/gesture.lua", "t", env))()
 assert(type(gestures.up) == "function" and type(gestures.down) == "function", "registration is repeatable after reload")
+local before = #dispatched
+fourFinger.down()
+assert(#dispatched == before, "down outside the scratchpad must do nothing")
+fourFinger.up()
+assert(dispatched[#dispatched].kind == "special" and dispatched[#dispatched].args == "scratchpad", "up opens the scratchpad")
+special = { name = "special:scratchpad" }
+before = #dispatched
+fourFinger.up()
+assert(#dispatched == before, "repeated up keeps the scratchpad open")
+fourFinger.down()
+assert(#dispatched == before + 1 and dispatched[#dispatched].args == "scratchpad", "down closes the scratchpad")
+special = { name = "special:other" }
+before = #dispatched
+fourFinger.down()
+assert(#dispatched == before, "down must not close an unrelated special workspace")
+assert(loadfile("app/gesture.lua", "t", env))()
+assert(type(fourFinger.up) == "function" and type(fourFinger.down) == "function", "four-finger registration survives reload")
+assert(fourFinger.horizontal == nil, "four-finger workspace swipes remain untouched")
 print("window-glide gesture tests passed")

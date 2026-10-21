@@ -71,4 +71,24 @@ assert.equal(service.windows.length, 0, "hidden/swallowed windows are excluded")
 assert.equal(service.showing, false);
 service.cachePreviewFrame("abc", {});
 assert.equal(service.previewFrames.abc, undefined, "late captures cannot refill a dismissed overview's cache");
+
+clientsQuery.running = false;
+const other = { ...top, address: "def", activated: false, workspace: { id: 2 } };
+const stash = { ...top, address: "stash", activated: false, workspace: { id: -99 } };
+const remote = { ...top, address: "remote", monitor: { name: "other" } };
+Hyprland.toplevels.values = [top, other, stash, remote];
+service.snapshot();
+service.acceptSnapshot([
+  clients[0],
+  { ...clients[0], address: "0xdef", workspace: { id: 2, name: "Code" } },
+  { ...clients[0], address: "0xstash", workspace: { id: -99 } },
+  { ...clients[0], address: "0xremote" },
+]);
+assert.equal(service.windows.length, 2, "include other regular desktops on this monitor, excluding special workspaces and other monitors");
+assert.equal(service.windows[1].capture, other.wayland, "inactive desktops retain a toplevel source for direct capture");
+assert.equal(service.windows[1].workspaceName, "Code");
+service.choose(1);
+service.commit();
+assert.equal(service.pendingFocusSelector, "address:0xdef", "cross-desktop selection commits the selected window address");
+assert.equal(focusAfterDismiss.active, true);
 console.log("window-glide service tests passed");

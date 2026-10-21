@@ -5,8 +5,8 @@ import vm from "node:vm";
 const context = {};
 const source = readFileSync(new URL("../app/selection.js", import.meta.url), "utf8")
   .replace(/^\.pragma library\s*/, "");
-vm.runInNewContext(source + "\nthis.api = { overviewStrip, rectCenters, nearestIndex, addressSelector, orderedWindows, usablePreview, livePreviewFrames };", context);
-const { overviewStrip, rectCenters, nearestIndex, addressSelector, orderedWindows, usablePreview, livePreviewFrames } = context.api;
+vm.runInNewContext(source + "\nthis.api = { overviewHeight, overviewStrip, rectCenters, nearestIndex, addressSelector, orderedWindows, usablePreview, livePreviewFrames };", context);
+const { overviewHeight, overviewStrip, rectCenters, nearestIndex, addressSelector, orderedWindows, usablePreview, livePreviewFrames } = context.api;
 const desktop = Array.from({ length: 20 }, (_, i) => ({
   sourceX: i * 0.5, sourceY: 0.03, sourceW: 0.48, sourceH: 0.95,
 }));
@@ -59,4 +59,27 @@ assert.deepEqual(orderedWindows([
   { key: "a", active: false },
 ]).map(w => w.key), ["z", "a", "b"]);
 
+
+const portraitHeight = overviewHeight(1080, 1920);
+assert.ok(portraitHeight > 1920 * 0.6, "portrait previews use enough height for vertical splits");
+assert.ok(overviewHeight(1920, 1080) > 1080 / 2, "landscape previews exceed the old one-third strip");
+assert.equal(overviewHeight(0, 1000), 0);
+assert.equal(overviewHeight(1000, 80), 0, "tiny surfaces cannot reserve negative space");
+const portraitSplit = overviewStrip([
+  { sourceX: 0, sourceY: 0, sourceW: 1, sourceH: 0.5 },
+  { sourceX: 0, sourceY: 0.5, sourceW: 1, sourceH: 0.5 },
+], 1080, 1920, 984, portraitHeight);
+assert.ok(portraitSplit.rects[0].w > 700, "portrait split previews remain comfortably wide");
+assert.ok(portraitSplit.rects[0].y + portraitSplit.rects[0].h <= portraitSplit.rects[1].y);
+assert.ok(portraitSplit.rects[1].y + portraitSplit.rects[1].h <= portraitHeight - 16);
+const grouped = overviewStrip([
+  { workspaceId: 2, workspaceName: "Code", sourceX: 0, sourceY: 0, sourceW: 1, sourceH: 1 },
+  { workspaceId: 1, sourceX: 0, sourceY: 0, sourceW: 1, sourceH: 1 },
+  { workspaceId: 3, sourceX: 0, sourceY: 0, sourceW: 1, sourceH: 1 },
+], 1920, 1080, 1824, overviewHeight(1920, 1080));
+assert.ok(grouped.rects[1].x + grouped.rects[1].w < grouped.rects[0].x, "other desktops never overlap");
+assert.ok(grouped.rects[0].x + grouped.rects[0].w < grouped.rects[2].x);
+assert.equal(grouped.groups[1].name, "Code");
+assert.equal(nearestIndex(rectCenters(grouped.rects), grouped.rects[1].cx, grouped.rects[1].cy), 1, "can select the workspace to the left");
+assert.equal(nearestIndex(rectCenters(grouped.rects), grouped.rects[2].cx, grouped.rects[2].cy), 2, "can select the workspace to the right");
 console.log("window-glide selection tests passed");

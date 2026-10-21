@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Controls
 import Quickshell
 import Quickshell.Wayland
+import qs.Commons as Commons
 import Quickshell.Hyprland
 import "../app/selection.js" as Selection
 
@@ -47,10 +48,11 @@ Scope {
       exclusionMode: ExclusionMode.Ignore
       anchors { top: true; bottom: true; left: true; right: true }
 
-      readonly property real overviewHeight: panel.height / 3
+      readonly property real overviewHeight: Selection.overviewHeight(panel.width, panel.height)
       readonly property var stripLayout: Selection.overviewStrip(root.service ? root.service.windows : [],
         panel.width, panel.height, strip.width, overviewHeight)
       readonly property var cardRects: stripLayout.rects
+      onCardRectsChanged: if (visible) root.updateSelection(panel)
 
       function revealSelection() {
         if (!root.service) return
@@ -70,7 +72,7 @@ Scope {
       Flickable {
         id: strip
         anchors.centerIn: parent
-        width: Math.max(1, parent.width - 96)
+        width: Math.max(1, parent.width - Math.min(96, parent.width * 0.08))
         height: panel.overviewHeight
         contentWidth: panel.stripLayout.width
         contentHeight: height
@@ -82,6 +84,21 @@ Scope {
         }
 
         Repeater {
+          model: panel.stripLayout.groups
+          delegate: Text {
+            required property var modelData
+            x: modelData.x
+            y: 8
+            width: modelData.width
+            text: "桌面 " + modelData.name
+            textFormat: Text.PlainText
+            elide: Text.ElideRight
+            color: Commons.Color.foreground
+            font.pixelSize: 14
+          }
+        }
+
+        Repeater {
           model: root.service ? root.service.windows : []
           delegate: Item {
             id: card
@@ -89,9 +106,8 @@ Scope {
             required property int index
             property bool grabbing: false
             readonly property var rect: panel.cardRects[index] || ({ x: panel.width / 2 - 180, y: panel.height / 2 - 120, w: 360, h: 240 })
-            readonly property bool sourceInViewport: modelData.sourceX + modelData.sourceW > 0
-              && modelData.sourceX < 1 && modelData.sourceY + modelData.sourceH > 0
-              && modelData.sourceY < 1
+            // Toplevel export renders the window independently of workspace visibility.
+            readonly property bool canCapture: !!card.modelData.capture
             readonly property var cachedFrame: root.service ? root.service.previewFrames[modelData.key] : null
             x: rect.x
             y: rect.y
@@ -103,13 +119,13 @@ Scope {
 
             Rectangle {
               anchors.fill: parent
-              radius: 12
+              radius: 0
               color: "#1c1c22"
               clip: true
               ScreencopyView {
                 id: capture
                 anchors.fill: parent
-                captureSource: root.service && root.service.showing && card.sourceInViewport ? card.modelData.capture : null
+                captureSource: root.service && root.service.showing && card.canCapture ? card.modelData.capture : null
                 live: true
               }
               Image {
@@ -142,7 +158,7 @@ Scope {
                   }
                   Text {
                     width: parent.width
-                    text: card.sourceInViewport ? "正在获取预览…" : "视口外 · 暂无可用预览"
+                    text: "正在获取窗口预览…"
                     color: "#a7a5ae"
                     font.pixelSize: 13
                     horizontalAlignment: Text.AlignHCenter
@@ -152,7 +168,7 @@ Scope {
               Timer {
                 interval: 200
                 repeat: true
-                running: root.service && root.service.showing && card.sourceInViewport && capture.hasContent && !probe.frame && !card.grabbing
+                running: root.service && root.service.showing && card.canCapture && capture.hasContent && !probe.frame && !card.grabbing
                 onTriggered: {
                   const key = card.modelData.key
                   const generation = root.service.snapshotGeneration
@@ -160,7 +176,7 @@ Scope {
                   const started = capture.grabToImage(function (frame) {
                     if (!card) return
                     card.grabbing = false
-                    if (!root.service || !root.service.showing || !card.sourceInViewport
+                    if (!root.service || !root.service.showing || !card.canCapture
                       || root.service.snapshotGeneration !== generation || card.modelData.key !== key) return
                     probe.frame = frame
                     probe.generation = generation
@@ -190,7 +206,7 @@ Scope {
                   ctx.drawImage(frame.url, 0, 0, width, height)
                   const pixels = ctx.getImageData(0, 0, width, height).data
                   if (root.service && root.service.showing && root.service.snapshotGeneration === generation
-                    && card.sourceInViewport && Selection.usablePreview(pixels))
+                    && card.canCapture && Selection.usablePreview(pixels))
                     root.service.cachePreviewFrame(card.modelData.key, frame)
                   clearFrame()
                 }
@@ -198,11 +214,12 @@ Scope {
             }
             Rectangle {
               anchors.fill: parent
-              anchors.margins: 2
-              radius: 10
+              // QML paints borders inward; expand so the inner edge meets the preview.
+              anchors.margins: -border.width
+              radius: 0
               color: "transparent"
               border.width: root.service && index === root.service.selectedIndex ? 4 : 1
-              border.color: root.service && index === root.service.selectedIndex ? "#f0c674" : "#595963"
+              border.color: root.service && index === root.service.selectedIndex ? Commons.Color.accent : Commons.Color.foreground
             }
           }
         }
@@ -212,7 +229,7 @@ Scope {
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.top: strip.bottom
         anchors.topMargin: 20
-        text: "三指继续滑动选择 · 松开切换 · Esc 取消"
+        text: "跨桌面滑动选择 · 松开切换 · Esc 取消"
         color: "#d8d5cc"
         font.pixelSize: 16
       }

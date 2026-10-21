@@ -57,10 +57,10 @@ Scope {
     const monitorHeight = (rotated ? monitorIpc.width : monitorIpc.height) / monitorScale
     const rows = []
     for (const top of (Hyprland.toplevels.values || [])) {
-      if (!top.wayland || !top.workspace || top.workspace.id !== workspace) continue
+      if (!top.wayland || !top.workspace || top.workspace.id < 1) continue
       if (!top.monitor || top.monitor.name !== monitorName) continue
       const ipc = clients.find(client => String(client.address).replace(/^0x/, "") === String(top.address).replace(/^0x/, ""))
-      if (!ipc || ipc.mapped === false || ipc.hidden || !ipc.workspace || ipc.workspace.id !== workspace) continue
+      if (!ipc || ipc.mapped === false || ipc.hidden || !ipc.workspace || ipc.workspace.id < 1) continue
       const at = ipc.at || [0, 0]
       const size = ipc.size || [0, 0]
       rows.push({
@@ -68,6 +68,8 @@ Scope {
         capture: top.wayland,
         title: String(top.title || top.class || "Window"),
         active: top.activated === true,
+        workspaceId: ipc.workspace.id,
+        workspaceName: String(ipc.workspace.name || ipc.workspace.id),
         sourceX: monitorWidth > 0 ? (at[0] - monitorIpc.x) / monitorWidth : NaN,
         sourceY: monitorHeight > 0 ? (at[1] - monitorIpc.y) / monitorHeight : NaN,
         sourceW: monitorWidth > 0 ? size[0] / monitorWidth : NaN,
@@ -75,7 +77,7 @@ Scope {
       })
     }
     service.previewFrames = Selection.livePreviewFrames(service.previewFrames, clients)
-    service.windows = Selection.orderedWindows(rows)
+    service.windows = Selection.orderedWindows(rows, workspace)
     service.selectedIndex = 0
     service.showing = rows.length > 0
   }
@@ -182,7 +184,7 @@ Scope {
       if (event.name === "custom" && String(event.data || "").startsWith("window-glide,"))
         service.onGesture(String(event.data).slice(13))
       if (event.name === "configreloaded") rearm.restart()
-      if (["workspace", "workspacev2", "focusedmon", "closewindow", "monitorremoved"].includes(event.name)) {
+      if (["workspace", "workspacev2", "focusedmon", "activespecial", "activespecialv2", "movewindow", "movewindowv2", "closewindow", "monitorremoved"].includes(event.name)) {
         // A captured workspace must not commit after its context changes.
         service.cancelPendingFocus()
         service.dismiss()

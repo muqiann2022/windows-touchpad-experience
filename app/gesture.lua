@@ -60,3 +60,23 @@ hl.gesture({ fingers = 3, direction = "down", action = function()
 end })
 _G.__window_glide_directions = { "horizontal", "up", "down" }
 _G.__window_glide_registered = true
+
+-- Directional actions are idempotent: repeated up must never close the stash.
+if _G.__window_glide_scratchpad_registered then
+  for _, direction in ipairs({ "up", "down" }) do
+    hl.gesture({ fingers = 4, direction = direction, action = "unset" })
+  end
+end
+hl.gesture({ fingers = 4, direction = "up", action = function()
+  local workspace = hl.get_active_special_workspace()
+  if not workspace or workspace.name ~= "special:scratchpad" then
+    hl.dispatch(hl.dsp.workspace.toggle_special("scratchpad"))
+  end
+end })
+hl.gesture({ fingers = 4, direction = "down", action = function()
+  local workspace = hl.get_active_special_workspace()
+  if workspace and workspace.name == "special:scratchpad" then
+    hl.dispatch(hl.dsp.workspace.toggle_special("scratchpad"))
+  end
+end })
+_G.__window_glide_scratchpad_registered = true
