@@ -24,11 +24,13 @@ assert(#dispatched == 0, "empty desktops must not trigger window actions")
 active = { fullscreen = 0, fullscreen_handler = "scrolling" }
 gestures.up()
 gestures.up()
-assert(dispatched[1].args.action == "set" and dispatched[2].args.action == "set", "repeated up must never toggle fullscreen off")
-assert(dispatched[1].args.layout_aware == false, "use whole-screen fullscreen on scrolling layouts")
-active = { fullscreen = 2, fullscreen_handler = "default" }
+assert(dispatched[1].args.action == "set" and dispatched[2].args.action == "set", "repeated up must never toggle maximization off")
+assert(dispatched[1].args.mode == "maximized" and dispatched[2].args.mode == "maximized", "up maximizes windows without requesting application fullscreen")
+assert(dispatched[1].args.layout_aware == false, "maximize across the working area on scrolling layouts")
+active = { fullscreen = 1, fullscreen_handler = "default" }
 gestures.down()
-assert(dispatched[3].kind == "fullscreen" and dispatched[3].args.action == "unset", "first down restores fullscreen without stashing")
+assert(dispatched[3].kind == "fullscreen" and dispatched[3].args.action == "unset" and dispatched[3].args.mode == "maximized", "first down restores maximized windows without stashing")
+assert(dispatched[3].args.layout_aware == false, "restore maximization with the same default handler")
 active = { fullscreen = 0, fullscreen_handler = "scrolling" }
 gestures.down()
 assert(dispatched[4].kind == "move" and dispatched[4].args.workspace == "special:scratchpad", "down on a restored window stashes it")
@@ -63,4 +65,16 @@ assert(#dispatched == before, "down must not close an unrelated special workspac
 assert(loadfile("app/gesture.lua", "t", env))()
 assert(type(fourFinger.up) == "function" and type(fourFinger.down) == "function", "four-finger registration survives reload")
 assert(fourFinger.horizontal == nil, "four-finger workspace swipes remain untouched")
+for _, handler in ipairs({ "default", "scrolling" }) do
+  active = { fullscreen = 2, fullscreen_handler = handler }
+  gestures.down()
+  local restored = dispatched[#dispatched]
+  assert(restored.kind == "fullscreen" and restored.args.mode == "fullscreen" and restored.args.action == "unset", "down still restores existing fullscreen windows")
+  assert(restored.args.layout_aware == (handler ~= "default"), "restore uses the window's fullscreen handler")
+  gestures.up()
+  assert(dispatched[#dispatched].args.mode == "maximized", "up requests maximization even from an existing fullscreen state")
+end
+active = { fullscreen = 1, fullscreen_handler = "default" }
+gestures.up()
+assert(dispatched[#dispatched].args.mode == "maximized" and dispatched[#dispatched].args.action == "set", "up on a maximized window keeps it maximized")
 print("window-glide gesture tests passed")

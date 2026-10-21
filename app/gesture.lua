@@ -47,13 +47,13 @@ end
 hl.gesture({ fingers = 3, direction = "horizontal", action = handlers("h") })
 hl.gesture({ fingers = 3, direction = "up", action = function()
   if not hl.get_active_window() then return end
-  hl.dispatch(hl.dsp.window.fullscreen({ mode = "fullscreen", action = "set", layout_aware = false }))
+  hl.dispatch(hl.dsp.window.fullscreen({ mode = "maximized", action = "set", layout_aware = false }))
 end })
 hl.gesture({ fingers = 3, direction = "down", action = function()
   local window = hl.get_active_window()
   if not window then return end
   if window.fullscreen ~= 0 then
-    hl.dispatch(hl.dsp.window.fullscreen({ mode = "fullscreen", action = "unset", layout_aware = window.fullscreen_handler ~= "default" }))
+    hl.dispatch(hl.dsp.window.fullscreen({ mode = window.fullscreen == 1 and "maximized" or "fullscreen", action = "unset", layout_aware = window.fullscreen_handler ~= "default" }))
   else
     hl.dispatch(hl.dsp.window.move({ workspace = "special:scratchpad", follow = false }))
   end

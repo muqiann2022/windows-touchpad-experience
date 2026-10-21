@@ -18,7 +18,7 @@ function rectCenters(rects) {
 function overviewHeight(screenWidth, screenHeight) {
   if (screenWidth <= 0 || screenHeight <= 0) return 0;
   var portrait = Math.max(0, Math.min(1, (screenHeight / screenWidth - 1) / 0.6));
-  return Math.min(Math.max(0, screenHeight - 120), screenHeight * (0.52 + 0.18 * portrait));
+  return Math.min(Math.max(0, screenHeight - 120), screenHeight * (0.48 + 0.22 * portrait));
 }
 
 // Preserve each workspace's spatial layout, then place workspaces side by side.
@@ -71,6 +71,15 @@ function overviewStrip(windows, screenWidth, screenHeight, viewportWidth, height
     cursor += group.w * scale + gap;
   });
   return { width: contentWidth, height: height, rects: rects, groups: labels };
+}
+
+// Amplify touchpad travel to keep large previews easy to navigate.
+function gestureIndex(points, travelX, travelY, width, height) {
+  if (!points.length) return -1;
+  var gain = 6;
+  var x = Math.max(0, Math.min(width, points[0].x + travelX * gain));
+  var y = Math.max(0, Math.min(height, points[0].y + travelY * gain));
+  return nearestIndex(points, x, y);
 }
 
 // Select the thumbnail nearest the virtual pointer, independent of list order.

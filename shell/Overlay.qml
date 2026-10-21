@@ -26,9 +26,8 @@ Scope {
     if (!service || !service.showing || !service.windows.length || !panel.visible) return
     const points = Selection.rectCenters(panel.cardRects)
     if (!points.length) return
-    const x = Math.max(0, Math.min(panel.stripLayout.width, points[0].x + service.gestureTravelX * 4))
-    const y = Math.max(0, Math.min(panel.overviewHeight, points[0].y + service.gestureTravelY * 4))
-    service.choose(Selection.nearestIndex(points, x, y))
+    service.choose(Selection.gestureIndex(points, service.gestureTravelX, service.gestureTravelY,
+      panel.stripLayout.width, panel.overviewHeight))
     panel.revealSelection()
   }
 

@@ -5,8 +5,8 @@ import vm from "node:vm";
 const context = {};
 const source = readFileSync(new URL("../app/selection.js", import.meta.url), "utf8")
   .replace(/^\.pragma library\s*/, "");
-vm.runInNewContext(source + "\nthis.api = { overviewHeight, overviewStrip, rectCenters, nearestIndex, addressSelector, orderedWindows, usablePreview, livePreviewFrames };", context);
-const { overviewHeight, overviewStrip, rectCenters, nearestIndex, addressSelector, orderedWindows, usablePreview, livePreviewFrames } = context.api;
+vm.runInNewContext(source + "\nthis.api = { overviewHeight, overviewStrip, rectCenters, nearestIndex, gestureIndex, addressSelector, orderedWindows, usablePreview, livePreviewFrames };", context);
+const { overviewHeight, overviewStrip, rectCenters, nearestIndex, gestureIndex, addressSelector, orderedWindows, usablePreview, livePreviewFrames } = context.api;
 const desktop = Array.from({ length: 20 }, (_, i) => ({
   sourceX: i * 0.5, sourceY: 0.03, sourceW: 0.48, sourceH: 0.95,
 }));
@@ -28,6 +28,14 @@ for (let i = 0; i < 20 * 4; i += 4) darkWindow[i] = 200;
 assert.equal(usablePreview(darkWindow), true, "dark windows with visible content remain usable");
 
 assert.equal(nearestIndex([], 50, 50), -1);
+const gesturePoints = [{ x: 500, y: 300 }, { x: 900, y: 300 }, { x: 100, y: 300 }, { x: 500, y: 700 }];
+assert.equal(gestureIndex([], 0, 0, 1200, 800), -1);
+assert.equal(gestureIndex(gesturePoints, 0, 0, 1200, 800), 0, "touch-down keeps the initial window selected");
+assert.equal(gestureIndex(gesturePoints, 33, 0, 1200, 800), 0, "small movements do not immediately switch windows");
+assert.equal(gestureIndex(gesturePoints, 34, 0, 1200, 800), 1, "a 400px gap switches after about 33 travel units at gain 6");
+assert.equal(gestureIndex(gesturePoints, -34, 0, 1200, 800), 2, "short travel also reaches windows to the left");
+assert.equal(gestureIndex(gesturePoints, 0, 34, 1200, 800), 3, "stacked windows use the same reduced travel distance");
+assert.equal(gestureIndex(gesturePoints, 10000, 0, 1200, 800), 1, "long travel stays at the edge window");
 assert.equal(addressSelector("0xabc"), "address:0xabc");
 assert.equal(addressSelector("abc"), "address:0xabc");
 assert.equal(addressSelector("0Xabc"), "address:0xabc");
@@ -62,7 +70,7 @@ assert.deepEqual(orderedWindows([
 
 const portraitHeight = overviewHeight(1080, 1920);
 assert.ok(portraitHeight > 1920 * 0.6, "portrait previews use enough height for vertical splits");
-assert.ok(overviewHeight(1920, 1080) > 1080 / 2, "landscape previews exceed the old one-third strip");
+assert.equal(overviewHeight(1920, 1080), 1080 * 0.48, "landscape overview uses 48 percent of screen height");
 assert.equal(overviewHeight(0, 1000), 0);
 assert.equal(overviewHeight(1000, 80), 0, "tiny surfaces cannot reserve negative space");
 const portraitSplit = overviewStrip([
