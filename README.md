@@ -127,6 +127,12 @@ npm test
 omarchy plugin validate .
 ```
 
+With Qt 6 development tools installed, run the title-rendering regression test:
+
+```bash
+QML_XHR_ALLOW_FILE_READ=1 QT_QPA_PLATFORM=offscreen QT_QPA_PLATFORMTHEME= QT_STYLE_OVERRIDE=Fusion /usr/lib/qt6/bin/qmltestrunner -input tests/tst_overlay.qml
+```
+
 `app/gesture.lua` registers gestures; `shell/Service.qml` handles snapshots and
 focus; `shell/Overlay.qml` draws and captures previews; `app/selection.js`
 contains layout and selection helpers.

@@ -131,6 +131,7 @@ Scope {
                   Text {
                     width: parent.width
                     text: card.modelData.title
+                    textFormat: Text.PlainText
                     color: "#ece9e1"
                     font.pixelSize: 17
                     font.bold: true
